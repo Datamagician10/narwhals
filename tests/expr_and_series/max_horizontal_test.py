@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 import narwhals as nw
-from tests.utils import Constructor, assert_equal_data
+from narwhals.dependencies import is_narwhals_lazyframe
+from narwhals.testing import assert_frame_equal
+
+if TYPE_CHECKING:
+    from tests.utils import Constructor
 
 data = {"a": [1, 3, None, None], "b": [4, None, 6, None], "z": [3, 1, None, None]}
 expected_values = [4, 3, 6, None]
@@ -14,7 +20,10 @@ def test_maxh(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.select(horizontal_max=nw.max_horizontal("a", nw.col("b"), "z"))
     expected = {"horizontal_max": expected_values}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 @pytest.mark.filterwarnings(r"ignore:.*All-NaN slice encountered:RuntimeWarning")
@@ -22,7 +31,10 @@ def test_maxh_all(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.select(nw.max_horizontal(nw.all()), c=nw.max_horizontal(nw.all()))
     expected = {"a": expected_values, "c": expected_values}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_maxh_duplicate_output_names(constructor: Constructor) -> None:
@@ -35,4 +47,7 @@ def test_maxh_duplicate_output_names(constructor: Constructor) -> None:
     ]
     result = df.select(horizontal_max=nw.max_horizontal(*exprs))
     expected = {"horizontal_max": [3, 1, 2, None]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
