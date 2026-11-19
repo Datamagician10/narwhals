@@ -4,7 +4,9 @@ import pytest
 from packaging.version import Version as PkgVersion
 
 import narwhals as nw
-from tests.utils import POLARS_VERSION, Constructor, assert_equal_data
+from narwhals.dependencies import is_narwhals_lazyframe
+from narwhals.testing import assert_frame_equal
+from tests.utils import POLARS_VERSION, Constructor
 
 data = {"foo": [1, 2, 3], "BAR": [4, 5, 6]}
 prefix = "with_prefix_"
@@ -14,7 +16,10 @@ def test_prefix(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.select((nw.col("foo", "BAR") * 2).name.prefix(prefix))
     expected = {"with_prefix_foo": [2, 4, 6], "with_prefix_BAR": [8, 10, 12]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_suffix_after_alias(constructor: Constructor) -> None:
@@ -23,7 +28,10 @@ def test_suffix_after_alias(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.select((nw.col("foo")).alias("alias_for_foo").name.prefix(prefix))
     expected = {"with_prefix_alias_for_foo": [1, 2, 3]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_prefix_anonymous(constructor: Constructor) -> None:
@@ -31,4 +39,7 @@ def test_prefix_anonymous(constructor: Constructor) -> None:
     df = nw.from_native(df_raw)
     result = df.select(nw.all().name.prefix(prefix))
     expected = {"with_prefix_foo": [1, 2, 3], "with_prefix_BAR": [4, 5, 6]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
