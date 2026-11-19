@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import narwhals as nw
-from tests.utils import Constructor, assert_equal_data
+from narwhals.dependencies import is_narwhals_lazyframe
+from narwhals.testing import assert_frame_equal
+
+if TYPE_CHECKING:
+    from tests.utils import Constructor
 
 
 def test_meanh(constructor: Constructor) -> None:
@@ -9,7 +15,10 @@ def test_meanh(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.select(horizontal_mean=nw.mean_horizontal(nw.col("a"), nw.col("b")))
     expected = {"horizontal_mean": [2.5, 3.0, 6.0, None]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_meanh_with_literal(constructor: Constructor) -> None:
@@ -17,7 +26,10 @@ def test_meanh_with_literal(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.select(horizontal_mean=nw.mean_horizontal(nw.lit(1), "a", nw.col("b")))
     expected = {"horizontal_mean": [2.0, 2.0, 3.5, 1.0]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_meanh_all(constructor: Constructor) -> None:
@@ -25,7 +37,13 @@ def test_meanh_all(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.select(nw.mean_horizontal(nw.all()))
     expected = {"a": [6, 12, 18]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
     result = df.select(c=nw.mean_horizontal(nw.all()))
     expected = {"c": [6, 12, 18]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
