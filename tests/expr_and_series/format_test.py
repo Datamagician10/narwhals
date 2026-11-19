@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 import narwhals as nw
-from tests.utils import Constructor, assert_equal_data
+from narwhals.dependencies import is_narwhals_lazyframe
+from narwhals.testing import assert_frame_equal
+
+if TYPE_CHECKING:
+    from tests.utils import Constructor
 
 
 def test_format(constructor: Constructor) -> None:
@@ -23,12 +29,18 @@ def test_format(constructor: Constructor) -> None:
             "hello dodo extinct wassup",
         ]
     }
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
     result = df.select(fmt=nw.format("{} {} wassup", "name", nw.col("surname")))
     expected = {
         "fmt": ["bob builder wassup", "alice wonderlander wassup", "dodo extinct wassup"]
     }
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_format_invalid() -> None:
