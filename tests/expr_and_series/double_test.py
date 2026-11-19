@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import narwhals as nw
-from tests.utils import Constructor, assert_equal_data
+from narwhals.dependencies import is_narwhals_lazyframe
+from narwhals.testing import assert_frame_equal
+
+if TYPE_CHECKING:
+    from tests.utils import Constructor
 
 
 def test_double(constructor: Constructor) -> None:
@@ -9,7 +15,10 @@ def test_double(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.with_columns(nw.all() * 2)
     expected = {"a": [2, 6, 4], "b": [8, 8, 12], "z": [14.0, 16.0, 18.0]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_double_alias(constructor: Constructor) -> None:
@@ -17,4 +26,7 @@ def test_double_alias(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.with_columns(nw.col("a").alias("o"), nw.all() * 2)
     expected = {"a": [2, 6, 4], "b": [8, 8, 12], "z": [14.0, 16.0, 18.0], "o": [1, 3, 2]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
