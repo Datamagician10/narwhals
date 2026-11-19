@@ -1,12 +1,17 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from packaging.version import Version as PkgVersion
 
 import narwhals as nw
-from tests.utils import DUCKDB_VERSION, Constructor, assert_equal_data
+from narwhals.dependencies import is_narwhals_lazyframe
+from narwhals.testing import assert_frame_equal
+from tests.utils import DUCKDB_VERSION
+
+if TYPE_CHECKING:
+    from tests.utils import Constructor
 
 
 def test_sumh(constructor: Constructor) -> None:
@@ -19,7 +24,10 @@ def test_sumh(constructor: Constructor) -> None:
         "z": [7.0, 8.0, 9.0],
         "horizontal_sum": [5, 7, 8],
     }
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_sumh_nullable(constructor: Constructor) -> None:
@@ -28,7 +36,10 @@ def test_sumh_nullable(constructor: Constructor) -> None:
 
     df = nw.from_native(constructor(data))
     result = df.select(hsum=nw.sum_horizontal("a", "b"), i="i").sort("i")
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_sumh_all(constructor: Constructor) -> None:
@@ -36,10 +47,16 @@ def test_sumh_all(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.select(nw.sum_horizontal(nw.all().name.suffix("_foo")))
     expected = {"a_foo": [11, 22, 33]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
     result = df.select(c=nw.sum_horizontal(nw.all()))
     expected = {"c": [11, 22, 33]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_sumh_aggregations(constructor: Constructor) -> None:
@@ -47,7 +64,10 @@ def test_sumh_aggregations(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.select(nw.sum_horizontal(nw.all().mean().name.suffix("_foo")))
     expected = {"a_foo": [22]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_sumh_transformations(constructor: Constructor) -> None:
@@ -57,7 +77,13 @@ def test_sumh_transformations(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.select(d=nw.sum_horizontal("a", nw.col("b").sum(), "c"))
     expected: dict[str, Any] = {"d": [23, 25, 27]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
     result = df.select(d=nw.sum_horizontal("a", nw.lit(None, dtype=nw.Float64), "c"))
     expected = {"d": [8.0, 10.0, 12.0]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
