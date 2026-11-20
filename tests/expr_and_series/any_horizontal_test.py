@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 from contextlib import nullcontext as does_not_raise
+from typing import TYPE_CHECKING
 
 import pytest
 
 import narwhals as nw
-from tests.utils import Constructor, assert_equal_data
+from narwhals.dependencies import is_narwhals_lazyframe
+from narwhals.testing import assert_frame_equal
+
+if TYPE_CHECKING:
+    from tests.utils import Constructor
 
 
 def test_anyh(constructor: Constructor) -> None:
@@ -14,7 +19,10 @@ def test_anyh(constructor: Constructor) -> None:
     result = df.select(any=nw.any_horizontal(nw.col("a"), "b", ignore_nulls=True))
 
     expected = {"any": [False, True, True]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_anyh_kleene(constructor: Constructor, request: pytest.FixtureRequest) -> None:
@@ -35,7 +43,10 @@ def test_anyh_kleene(constructor: Constructor, request: pytest.FixtureRequest) -
     with context:
         result = df.select(any=nw.any_horizontal("a", "b", ignore_nulls=False))
         expected = [True, True, None]
-        assert_equal_data(result, {"any": expected})
+        if is_narwhals_lazyframe(result):
+            result = result.collect()
+        expected_frame = nw.from_dict({"any": expected}, backend=result.implementation)
+        assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_anyh_ignore_nulls(constructor: Constructor) -> None:
@@ -47,7 +58,10 @@ def test_anyh_ignore_nulls(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.select(any=nw.any_horizontal("a", "b", ignore_nulls=True))
     expected = [True, True, False]
-    assert_equal_data(result, {"any": expected})
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict({"any": expected}, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_anyh_dask(constructor: Constructor) -> None:
@@ -60,17 +74,26 @@ def test_anyh_dask(constructor: Constructor) -> None:
     df = nw.from_native(dd.from_pandas(pd.DataFrame(data, dtype="Boolean[pyarrow]")))
     result = df.select(any=nw.any_horizontal("a", "b", ignore_nulls=True))
     expected: list[bool | None] = [True, True, False]
-    assert_equal_data(result, {"any": expected})
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict({"any": expected}, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
     result = df.select(any=nw.any_horizontal("a", "b", ignore_nulls=False))
     expected = [True, True, None]
-    assert_equal_data(result, {"any": expected})
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict({"any": expected}, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
     # No nulls, NumPy-backed
     data = {"a": [True, True, False], "b": [True, False, False]}
     df = nw.from_native(dd.from_pandas(pd.DataFrame(data)))
     result = df.select(any=nw.any_horizontal("a", "b", ignore_nulls=True))
     expected = [True, True, False]
-    assert_equal_data(result, {"any": expected})
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict({"any": expected}, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
 
 
 def test_anyh_all(constructor: Constructor) -> None:
@@ -81,7 +104,13 @@ def test_anyh_all(constructor: Constructor) -> None:
     df = nw.from_native(constructor(data))
     result = df.select(any=nw.any_horizontal(nw.all(), ignore_nulls=False))
     expected = {"any": [False, True, True]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
     result = df.select(nw.any_horizontal(nw.all(), ignore_nulls=False))
     expected = {"a": [False, True, True]}
-    assert_equal_data(result, expected)
+    if is_narwhals_lazyframe(result):
+        result = result.collect()
+    expected_frame = nw.from_dict(expected, backend=result.implementation)
+    assert_frame_equal(result, expected_frame, check_dtypes=False)
